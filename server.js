@@ -34,7 +34,12 @@ app.get("/webhook", (req, res) => {
 
   if (mode === "subscribe" && token === VERIFY_TOKEN) {
     console.log("[webhook] Vérification Meta réussie.");
-    return res.status(200).send(challenge);
+    // Meta exige une réponse en texte brut pur, sans le type "text/html"
+    // qu'Express applique par défaut à une chaîne de caractères — certains
+    // vérificateurs côté Meta rejettent silencieusement une réponse dont
+    // le Content-Type ne correspond pas exactement à "text/plain".
+    res.set("Content-Type", "text/plain");
+    return res.status(200).send(String(challenge));
   }
   console.warn("[webhook] Échec de vérification (token invalide).");
   return res.sendStatus(403);
@@ -69,11 +74,11 @@ app.post("/webhook", async (req, res) => {
     const entry = req.body.entry?.[0];
     const change = entry?.changes?.[0];
     const messages = change?.value?.messages;
-    if (!messages || messages.length === 0) return; // accusé de lecture, etc. — rien à faire
+    if (!messages || messages.length === 0) return;
 
     for (const message of messages) {
-      const from = message.from; // numéro E.164 du client, ex. "2376XXXXXXXX"
-      const type = message.type; // "text" | "image" | ...
+      const from = message.from;
+      const type = message.type;
       const text = type === "text" ? message.text.body : null;
       const hasImage = type === "image";
 
